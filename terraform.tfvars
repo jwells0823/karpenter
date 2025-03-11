@@ -1,5 +1,5 @@
 
-cluster_name = "your_cluster"
+cluster_name = "dev"
 
 karpenter_role_attatchments = [
   "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",

@@ -7,6 +7,104 @@ data "aws_eks_cluster" "current" {
   name = var.cluster_name
 }
 
+data "aws_eks_node_groups" "nodegroup" {
+  cluster_name = var.cluster_name
+}
+
+data "aws_eks_node_group" "nodegroup_information" {
+  for_each        = toset(data.aws_eks_node_groups.nodegroup.names)
+  cluster_name    = var.cluster_name
+  node_group_name = each.value
+}
+
+data "aws_autoscaling_group" "nodegroup_asg" {
+  for_each = { for k, v in data.aws_eks_node_group.nodegroup_information : k => v.resources[0].autoscaling_groups[0].name }
+
+  name = each.value
+}
+
+data "helm_template" "karpenter_template" {
+  name       = "karpenter"
+  namespace  = var.karpenter_namespace_name
+  repository = var.karpenter_repository
+
+  chart   = "karpenter"
+  version = var.karpenter_version
+
+  set {
+    name  = "settings.clusterName"
+    value = var.cluster_name
+  }
+  set {
+    name  = "settings.interruptionQueue"
+    value = var.cluster_name
+  }
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/KarpenterControllerRole-${var.cluster_name}"
+  }
+  set {
+    name  = "controller.resources.requests.cpu"
+    value = "1"
+  }
+  set {
+    name  = "controller.resources.requests.memory"
+    value = "1Gi"
+  }
+  set {
+    name  = "controller.resources.limits.cpu"
+    value = "1"
+  }
+  set {
+    name  = "controller.resources.limits.memory"
+    value = "1Gi"
+  }
+}
+
+
+# debugging for outputs. May be useful if you have issues.
+#output "nodegroup_security_groups" {
+#  value = {
+#    for nodegroup_name, lt in data.aws_launch_template.nodegroup_lt :
+#    nodegroup_name => lt.security_group_ids
+#  }
+#}
+
+#output "nodegroup_asg_info" {
+#  value = {
+#    for nodegroup_name, asg in data.aws_autoscaling_group.nodegroup_asg :
+#    nodegroup_name => {
+#      asg_name             = asg.name
+#      min_size             = asg.min_size
+#      max_size             = asg.max_size
+#      desired_capacity     = asg.desired_capacity
+#      launch_template_name = try(asg.mixed_instances_policy[0].launch_template[0].launch_template_specification[0].launch_template_name, "NO_LAUNCH_TEMPLATE")
+#      launch_template_id   = try(asg.mixed_instances_policy[0].launch_template[0].launch_template_specification[0].launch_template_id, "NO_LAUNCH_TEMPLATE")
+#      launch_template_version = try(asg.mixed_instances_policy[0].launch_template[0].launch_template_specification[0].version, "UNKNOWN_VERSION")
+#      security_groups      = try(asg.vpc_zone_identifier, [])
+#    }
+#  }
+#}
+
+
+#output "nodegroup_launch_templates" {
+#  value = {
+#    for nodegroup_name, info in data.aws_eks_node_group.nodegroup_information :
+#    nodegroup_name => info.launch_template
+#  }
+#}
+
+#output "nodegroup_information" {
+#  value = data.aws_eks_node_group.nodegroup_information
+#}
+
+#output "launch_template_arns" {
+#  value = { for k, v in data.aws_launch_template.nodegroup_lt : k => v.id }
+#}
+
+
+
+
 # Remove "https://" from the OIDC endpoint
 locals {
   oidc_provider = replace(data.aws_eks_cluster.current.identity[0].oidc[0].issuer, "https://", "")
@@ -181,5 +279,27 @@ resource "aws_iam_role_policy_attachment" "attach_policy-conroller" {
   role       = aws_iam_role.karpenter_conroller_role.name
   policy_arn = aws_iam_policy.controller_policy.arn
 }
+
+# Tag the subnets for each node group
+resource "aws_ec2_tag" "karpenter_discovery" {
+  for_each    = toset(data.aws_eks_node_groups.nodegroup.names)
+  resource_id = each.value
+  key         = "karpenter.sh/discovery"
+  value       = var.cluster_name
+}
+
+# Tagging the security groups that are assoicated with the current asg's
+resource "aws_ec2_tag" "karpenter_sg_tag" {
+  for_each = {
+    for nodegroup_name, asg in data.aws_autoscaling_group.nodegroup_asg :
+    nodegroup_name => asg.vpc_zone_identifier
+  }
+
+  resource_id = each.value
+  key         = "karpenter.sh/discovery"
+  value       = var.cluster_name
+}
+
+
 
 
