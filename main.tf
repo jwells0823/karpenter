@@ -114,8 +114,8 @@ resource "aws_iam_role" "karpenter_node_trust_role" {
   name = "KarpenterNodeRole-${var.cluster_name}"
 
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
+    "Version" : "2012-10-17"
+    "Statement" : [
       {
         "Effect" : "Allow",
         "Principal" : {
@@ -163,6 +163,7 @@ resource "aws_iam_policy" "controller_policy" {
   description = "controller policy for karpenter"
 
   policy = jsonencode({
+    Version : "2012-10-17",
     Statement = [
       {
         "Action" : [
@@ -300,6 +301,42 @@ resource "aws_ec2_tag" "karpenter_sg_tag" {
   value       = var.cluster_name
 }
 
+resource "aws_eks_access_entry" "kaprenter_cluster_access" {
+  cluster_name  = var.cluster_name
+  principal_arn = data.aws_eks_cluster.current.arn
+  type          = "EC2_LINUX" # or "EC2_WINDOWS" - Linux covers Bottlerocket as well
+  
+  tags = { 
+    env = "dev" 
+  }
+}
 
+#Deploy karpenter helm chart
+resource "helm_release" "karpenter" {
+  name       = "karpenter"
+  repository = "oci://public.ecr.aws/karpenter/karpenter"
+  version    = var.karpenter_version
+  namespace  = var.karpenter_namespace
+
+  create_namespace = var.create_karpenter_namespace
+
+  values = [templatefile("${path.module}/values.yaml", {
+    cluster_name= var.cluster_name
+    aws_patition = var.aws_partition
+    aws_account_id = var.aws_account_id
+    nodegroup = var.nodegroup
+    aws_account_id = data.aws_caller_identity.current.account_id
+  })]
+}
+
+resource "kubectl_manifest" "karpenter_crds" {
+  for_each = toset([
+    "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${var.karpenter_version}/pkg/apis/crds/karpenter.sh_nodepools.yaml",
+    "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${var.karpenter_version}/pkg/apis/crds/karpenter.k8s.aws_ec2nodeclasses.yaml",
+    "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v${var.karpenter_version}/pkg/apis/crds/karpenter.sh_nodeclaims.yaml"
+  ])
+
+  yaml_body = file(each.value)
+}
 
 

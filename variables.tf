@@ -24,10 +24,16 @@ variable "node_groups" {
   default     = ["node1", "node2"]
 }
 
+variable "karpenter_node_group" {
+  description = "node group that karpenter runs on"
+  type        = list(string)
+  default     = ["application"]
+}
+
 variable "karpenter_version" {
   description = "karpenter version deployed"
   type        = string
-  default     = "1.3.1"
+  default     = "1.3.2"
 }
 
 variable "karpenter_repository" {
@@ -36,4 +42,13 @@ variable "karpenter_repository" {
   default     = "oci://public.ecr.aws/karpenter"
 }
 
+variable "aws_partition" {
+  description = "aws partition (usualy just aws)"
+  type        = string
+  default     = "aws"
+}
 
+variable "aws_account_id" {
+  description = "AWS Account ID"
+  type        = string
+}

@@ -2,8 +2,8 @@
 
 terraform {
   backend "s3" {
-    bucket = "your-bucket"
-    key    = "not-sure-if-necessary"
+    bucket = "kterraform-dev"
+    key    = "dev/cluster-karpenter"
     region = "us-east-1"
   }
 }
