@@ -1,0 +1,27 @@
+settings:
+  clusterName: "${cluster_name}"
+  interruptionQueue: "${cluster_name}"
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:${aws_partition}:iam::${aws_account_id}:role/KarpenterControllerRole-${cluster_name}"
+
+controller:
+  resources:
+    requests:
+      cpu: 1
+      memory: 1Gi
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: eks.amazonaws.com/nodegroup
+          operator: In
+          values:
+          - "dev-application-1"
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - topologyKey: "kubernetes.io/hostname"
+

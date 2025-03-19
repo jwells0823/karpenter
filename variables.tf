@@ -48,7 +48,14 @@ variable "aws_partition" {
   default     = "aws"
 }
 
-variable "aws_account_id" {
-  description = "AWS Account ID"
+variable "karpenter_nodegroup" {
+  description = "aws partition (usualy just aws)"
   type        = string
+  default     = "application"
+}
+
+variable "alias_version" {
+  description = "AL2023 alias version for AMI selection"
+  type        = string
+  default     = "latest"
 }
