@@ -405,10 +405,6 @@ spec:
             - matchExpressions:
               - key: karpenter.sh/nodepool
                 operator: DoesNotExist
-              - key: eks.amazonaws.com/nodegroup
-                operator: In
-                values:
-                - "application"
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:

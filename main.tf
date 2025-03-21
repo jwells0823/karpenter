@@ -260,7 +260,15 @@ resource "aws_iam_policy" "controller_policy" {
         "Effect" : "Allow",
         "Resource" : "*",
         "Action" : "iam:GetInstanceProfile"
-      }
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "iam:GetRole",
+          "iam:ListInstanceProfiles"
+        ],
+        "Resource": "arn:aws:iam::940482425358:role/KarpenterNodeRole-dev"
+     }
     ]
   })
 }
@@ -285,16 +293,25 @@ resource "aws_ec2_tag" "karpenter_security_groups" {
 }
 
 
-resource "aws_eks_access_entry" "kaprenter_cluster_access" {
+#resource "aws_eks_access_entry" "kaprenter_cluster_access" {
+#  cluster_name  = var.cluster_name
+#  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/KarpenterControllerRole-dev"
+#  type          = "EC2_LINUX" # or "EC2_WINDOWS" - Linux covers Bottlerocket as well
+#  
+#  tags = { 
+#    env = "dev" 
+#  }
+#}
+
+resource "aws_eks_access_entry" "kaprenter_cluster_access2" {
   cluster_name  = var.cluster_name
-  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/KarpenterControllerRole-dev"
+  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/KarpenterNodeRole-dev"
   type          = "EC2_LINUX" # or "EC2_WINDOWS" - Linux covers Bottlerocket as well
   
   tags = { 
     env = "dev" 
   }
 }
-
 resource "helm_release" "karpenter_base" {
   name       = "karpenter"
   repository = "oci://public.ecr.aws/karpenter"
@@ -334,7 +351,15 @@ resource "local_file" "karpenter_nodepool" {
 resource "null_resource" "apply_karpenter_nodepool" {
   depends_on = [local_file.karpenter_nodepool]
 
+    triggers = {
+       always_run = timestamp()
+    }
+
   provisioner "local-exec" {
     command = "kubectl apply -f ${local_file.karpenter_nodepool.filename}"
   }
+}
+
+output "karpenter_nodepool_yaml" {
+  value = local_file.karpenter_nodepool.content
 }

@@ -1,6 +1,5 @@
 settings:
   clusterName: "${cluster_name}"
-  interruptionQueue: "${cluster_name}"
 
 serviceAccount:
   annotations:
@@ -21,7 +20,5 @@ affinity:
           operator: In
           values:
           - "dev-application-1"
-  podAntiAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      - topologyKey: "kubernetes.io/hostname"
+          - "dev-database-2"
 
