@@ -59,3 +59,15 @@ variable "alias_version" {
   type        = string
   default     = "latest"
 }
+
+variable "create_karpenter_namespace" {
+  description = "create karpenter namespace"
+  type        = bool
+  default     = false  
+}
+
+variable "karpenter_subnet_ids" {
+  description = "subnet ids for karpenter"
+  type        = list(string)
+  default     = ["subnet-002892383563a69a8", "subnet-0f93c2d0b60dcfe6a", "subnet-06eccff6d67fbd28e"]
+}
