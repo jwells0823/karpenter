@@ -69,5 +69,5 @@ variable "create_karpenter_namespace" {
 variable "karpenter_subnet_ids" {
   description = "subnet ids for karpenter"
   type        = list(string)
-  default     = ["subnet-002892383563a69a8", "subnet-0f93c2d0b60dcfe6a", "subnet-06eccff6d67fbd28e"]
+  default     = ["subnet-1", "subnet-2", "subnet-3"]
 }
